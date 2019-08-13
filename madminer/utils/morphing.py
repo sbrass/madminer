@@ -511,10 +511,10 @@ class PhysicsMorpher:
 
         for c in range(self.n_components):
             for i in range(self.n_parameters):
-                factor = 1.0
+                factor = 0.5
                 for p in range(self.n_parameters):
                     if p == i and self.components[c, p] > 0:
-                        factor *= float(self.components[c, p]) * theta[p] ** (self.components[c, p] - 1)
+                        factor *= float(self.components[c, p] * (self.components[c, p] - 1)) * theta[p] ** (self.components[c, p] - 2)
                     elif p == i:
                         factor = 0.0
                         break
