@@ -15,3 +15,5 @@ logger.info("|         Johann Brehmer, Felix Kling, Irina Espejo, and Kyle Cranm
 logger.info("|                                                                      |")
 logger.info("------------------------------------------------------------------------")
 logger.info("")
+
+logger.warning("Using the HARRY hack! Be very careful, this is dangerous territory!")
