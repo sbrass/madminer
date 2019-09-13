@@ -767,6 +767,37 @@ class ParameterizedRatioEstimator(ConditionalEstimator):
     def evaluate(self, *args, **kwargs):
         return self.evaluate_log_likelihood_ratio(*args, **kwargs)
 
+    def create_pyhf_wrapper(self, parameters=None):
+        if parameters is None:
+            parameters = list(range(self.n_parameters))
+        assert len(parameters) == 1, "For now only 1 parameter of interest is supported"
+
+        class wrapper(object):
+            model = self.model
+            poi_index = 0
+
+            data_mean = self.x_scaling_means if self.x_scaling_means is not None else 0.
+            data_std = self.x_scaling_stds if self.x_scaling_stds is not None else 1.
+            pars_mean = self.theta_scaling_means if self.theta_scaling_means is not None else 0.
+            pars_std = self.theta_scaling_stds if self.theta_scaling_stds is not None else 1.
+
+            def __init__(wrapper_self):
+                pass
+
+            def logpdf(wrapper_self, pars, data):
+                # Preprocessing
+                data = (data - self.data_mean[np.newaxis, :]) / self.data_std[np.newaxis, :]
+                pars = (pars - self.pars_mean[np.newaxis, :]) / self.pars_std[np.newaxis, :]
+
+                # Calculate model output
+                with torch.no_grad():
+                    wrapper_self.model.eval()
+                    _, log_r_hat, _ = wrapper_self.model(pars, data, track_score=False, create_gradient_graph=False)
+
+                return log_r_hat
+
+        return wrapper
+
     def _create_model(self):
         self.model = DenseSingleParameterizedRatioModel(
             n_observables=self.n_observables,
@@ -805,6 +836,7 @@ class ParameterizedRatioEstimator(ConditionalEstimator):
         estimator_type = str(settings["estimator_type"])
         if estimator_type != "parameterized_ratio":
             raise RuntimeError("Saved model is an incompatible estimator type {}.".format(estimator_type))
+
 
 
 class DoubleParameterizedRatioEstimator(ConditionalEstimator):
