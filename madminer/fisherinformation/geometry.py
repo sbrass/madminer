@@ -18,9 +18,9 @@ class InformationGeometry:
     one of the following functions
 
     * `InformationGeometry.information_from_formula()` defines the Fisher Information
-      explicitly as function of the theory parameters `theta`.
-    * `InformationGeometry.information_from_grid()` loads a grid of Fisher Information
-      which is then interpolated.
+    explicitly as function of the theory parameters `theta`.
+    * `InformationGeometry.information_from_grid()` loads a grid of Fisher Informations
+    which is then interpolated.
 
     Using information geometrical methods, the function `InformationGeometry.distance_contours()` then
     calculates the distance contours and equivalently the p-values throughout parameter space.
