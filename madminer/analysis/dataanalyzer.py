@@ -1,8 +1,5 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import logging
 import numpy as np
-import six
 
 from madminer.utils.interfaces.madminer_hdf5 import load_madminer_settings, madminer_event_loader
 from madminer.utils.morphing import PhysicsMorpher, NuisanceMorpher
@@ -113,7 +110,7 @@ class DataAnalyzer(object):
             at the closest benchmark point to a given parameter point.
 
         return_sampling_ids : bool, optional
-            If True, the iterator returns the sampling IDs in additioin to observables and weights.
+            If True, the iterator returns the sampling IDs in addition to observables and weights.
 
         Yields
         ------
@@ -132,7 +129,7 @@ class DataAnalyzer(object):
             include_nuisance_parameters = self.include_nuisance_parameters
 
         sampling_benchmark = self._find_closest_benchmark(generated_close_to)
-        logger.debug("Sampling benchmark closest to %s: %s", generated_close_to, sampling_benchmark)
+        logger.debug(f"Sampling benchmark closest to {generated_close_to}: {sampling_benchmark}")
 
         if sampling_benchmark is None:
             sampling_factors = self._calculate_sampling_factors()
@@ -206,22 +203,28 @@ class DataAnalyzer(object):
         """
 
         x, weights_benchmarks = next(
-            self.event_loader(batch_size=None, start=start_event, end=end_event, generated_close_to=generated_close_to)
+            self.event_loader(
+                start=start_event,
+                end=end_event,
+                batch_size=None,
+                generated_close_to=generated_close_to,
+            )
         )
 
         # Pick events randomly
         n_events = len(x)
+
         if n_draws is not None and n_draws < n_events:
             idx = np.random.choice(n_events, n_draws, replace=False)
             x = x[idx]
             weights_benchmarks = weights_benchmarks[idx]
         elif n_draws is not None:
-            logger.warning("Requested %s events, but only %s available", n_draws, n_events)
+            logger.warning(f"Requested {n_draws} events, but only {n_events} available")
 
         # Process and return appropriate weights
         if theta is None:
             return x, weights_benchmarks
-        elif isinstance(theta, six.string_types):
+        elif isinstance(theta, str):
             i_benchmark = list(self.benchmarks.keys()).index(theta)
             return x, weights_benchmarks[:, i_benchmark]
         elif derivative:
@@ -232,7 +235,7 @@ class DataAnalyzer(object):
         else:
             # TODO: nuisance params
             if nu is not None:
-                raise NotImplementedError
+                raise NotImplementedError()
             theta_matrix = self._get_theta_benchmark_matrix(theta)
             weights_theta = mdot(theta_matrix, weights_benchmarks)
             return x, weights_theta
@@ -311,7 +314,7 @@ class DataAnalyzer(object):
                 partition, test_split, validation_split
             )
         else:
-            raise ValueError("Events has to be either 'all', 'train', or 'test', but got {}!".format(partition))
+            raise ValueError(f"Invalid partition type: {partition}")
 
         # Theta matrices (translation of benchmarks to theta, at nominal nuisance params)
         if thetas is None:
@@ -400,11 +403,14 @@ class DataAnalyzer(object):
              account. Otherwise, the list has to have the same number of elements as thetas, and each entry can specify
              nuisance parameters at nominal value (None) or a value of the nuisance parameters (ndarray).
 
+        partition : {"train", "test", "validation", "all"}, optional
+            Which events to use. Default: "all".
+
         test_split : float, optional
             Fraction of events reserved for testing. Default value: 0.2.
 
-        partition : {"train", "test", "validation", "all"}, optional
-            Which events to use. Default: "all".
+        validation_split : float, optional
+            Fraction of weighted events reserved for validation. Default value: 0.2.
 
         gradients : {"all", "theta", "nu"}, optional
             Which gradients to calculate. Default value: "all".
@@ -422,7 +428,7 @@ class DataAnalyzer(object):
             Calculated cross section gradients in pb with shape (n_gradients,).
         """
 
-        logger.debug("Calculating cross section gradients for thetas = %s and nus = %s", thetas, nus)
+        logger.debug(f"Calculating cross section gradients for thetas = {thetas} and nus = {nus}")
 
         # Inputs
         include_nuisance_benchmarks = nus is not None or gradients in ["all", "nu"]
@@ -430,7 +436,7 @@ class DataAnalyzer(object):
             nus = [None for _ in thetas]
         assert len(nus) == len(thetas), "Numbers of thetas and nus don't match!"
         if gradients not in ["all", "theta", "nu"]:
-            raise RuntimeError("Gradients has to be 'all', 'theta', or 'nu', but got {}".format(gradients))
+            raise RuntimeError(f"Invalid gradients type: {gradients}")
 
         # Which events to use
         if partition == "all":
@@ -441,12 +447,13 @@ class DataAnalyzer(object):
                 partition, test_split, validation_split
             )
         else:
-            raise ValueError("Events has to be either 'all', 'train', or 'test', but got {}!".format(partition))
+            raise ValueError(f"Invalid partition type: {partition}")
 
         # Theta matrices (translation of benchmarks to theta, at nominal nuisance params)
         theta_matrices = np.asarray(
             [self._get_theta_benchmark_matrix(theta) for theta in thetas]
         )  # shape (n_thetas, n_benchmarks)
+
         theta_gradient_matrices = np.asarray(
             [self._get_dtheta_benchmark_matrix(theta) for theta in thetas]
         )  # shape (n_thetas, n_gradients, n_benchmarks)
@@ -464,7 +471,7 @@ class DataAnalyzer(object):
             )
         ):
             n_batch, _ = benchmark_weights.shape
-            logger.debug("Batch %s with %s events", i_batch + 1, n_batch)
+            logger.debug(f"Batch {i_batch+1} with {n_batch} events")
 
             if gradients in ["all", "theta"]:
                 nom_gradients = mdot(
@@ -512,7 +519,7 @@ class DataAnalyzer(object):
 
     def _report_setup(self):
         logger.info("Found %s parameters", self.n_parameters)
-        for key, values in six.iteritems(self.parameters):
+        for key, values in self.parameters.items():
             logger.debug(
                 "   %s (LHA: %s %s, maximal power in squared ME: %s, range: %s)",
                 key,
@@ -523,28 +530,28 @@ class DataAnalyzer(object):
             )
 
         if self.nuisance_parameters is not None:
-            logger.info("Found %s nuisance parameters", self.n_nuisance_parameters)
-            for key, values in six.iteritems(self.nuisance_parameters):
+            logger.info(f"Found {self.n_nuisance_parameters} nuisance parameters")
+            for key, values in self.nuisance_parameters.items():
                 logger.debug("   %s (%s)", key, values)
         else:
             logger.info("Did not find nuisance parameters")
             self.include_nuisance_parameters = False
 
-        logger.info("Found %s benchmarks, of which %s physical", self.n_benchmarks, self.n_benchmarks_phys)
-        for (key, values), is_nuisance in zip(six.iteritems(self.benchmarks), self.benchmark_is_nuisance):
+        logger.info(f"Found {self.n_benchmarks} benchmarks")
+        for (key, values), is_nuisance in zip(self.benchmarks.items(), self.benchmark_is_nuisance):
             if is_nuisance:
                 logger.debug("   %s: systematics", key)
             else:
                 logger.debug("   %s: %s", key, format_benchmark(values))
 
-        logger.info("Found %s observables", self.n_observables)
+        logger.info(f"Found {self.n_observables} observables")
         if self.observables is not None:
             for i, obs in enumerate(self.observables):
                 logger.debug("  %2.2s %s", i, obs)
 
-        logger.info("Found %s events", self.n_samples)
+        logger.info(f"Found {self.n_samples} events")
         if self.n_events_generated_per_benchmark is not None:
-            for events, name in zip(self.n_events_generated_per_benchmark, six.iterkeys(self.benchmarks)):
+            for events, name in zip(self.n_events_generated_per_benchmark, self.benchmarks.keys()):
                 if events > 0:
                     logger.info("  %s signal events sampled from benchmark %s", events, name)
             if self.n_events_backgrounds is not None and self.n_events_backgrounds > 0:
@@ -604,7 +611,6 @@ class DataAnalyzer(object):
         n_events, _ = benchmark_weights.shape
 
         # Inputs
-        include_nuisance_benchmarks = nus is not None
         if nus is None:
             nus = [None for _ in thetas]
         assert len(nus) == len(thetas), "Numbers of thetas and nus don't match!"
@@ -729,7 +735,7 @@ class DataAnalyzer(object):
                 end_event = int(round((1.0 - test_split) * self.n_samples, 0))
                 correction_factor = 1.0 / (1.0 - test_split)
                 if end_event < 0 or end_event > self.n_samples:
-                    raise ValueError("Irregular train / test split: sample {} / {}", end_event, self.n_samples)
+                    raise ValueError(f"Irregular split: sample {end_event} / {self.n_samples}")
 
         else:
             if test_split is None or test_split <= 0.0 or test_split >= 1.0:
@@ -739,7 +745,7 @@ class DataAnalyzer(object):
                 start_event = int(round((1.0 - test_split) * self.n_samples, 0)) + 1
                 correction_factor = 1.0 / test_split
                 if start_event < 0 or start_event > self.n_samples:
-                    raise ValueError("Irregular train / test split: sample {} / {}", start_event, self.n_samples)
+                    raise ValueError(f"Irregular split: sample {start_event} / {self.n_samples}")
 
             end_event = None
 
@@ -790,9 +796,7 @@ class DataAnalyzer(object):
                 correction_factor = 1.0 / train_split
 
                 if end_event < 0 or end_event > self.n_samples:
-                    raise ValueError(
-                        "Irregular train / validation / test split: sample {} / {}", end_event, self.n_samples
-                    )
+                    raise ValueError(f"Irregular split: sample {end_event} / {self.n_samples}")
 
         elif partition == "validation":
             if validation_split is None or validation_split <= 0.0 or validation_split >= 1.0:
@@ -806,13 +810,10 @@ class DataAnalyzer(object):
                 correction_factor = 1.0 / validation_split
 
                 if start_event < 0 or start_event > self.n_samples:
-                    raise ValueError(
-                        "Irregular train / validation / test  split: sample {} / {}", start_event, self.n_samples
-                    )
+                    raise ValueError(f"Irregular split: sample {start_event} / {self.n_samples}")
+
                 if end_event < 0 or end_event > self.n_samples:
-                    raise ValueError(
-                        "Irregular train / validation / test split: sample {} / {}", end_event, self.n_samples
-                    )
+                    raise ValueError(f"Irregular split: sample {end_event} / {self.n_samples}")
 
         elif partition == "test":
             end_event = None
@@ -824,17 +825,15 @@ class DataAnalyzer(object):
                 start_event = int(round((1.0 - test_split) * self.n_samples, 0)) + 1
                 correction_factor = 1.0 / test_split
                 if start_event < 0 or start_event > self.n_samples:
-                    raise ValueError(
-                        "Irregular train / validation / test split: sample {} / {}", start_event, self.n_samples
-                    )
+                    raise ValueError(f"Irregular split: sample {start_event} / {self.n_samples}")
 
         else:
-            raise RuntimeError("Unknown partition {}, has to be 'train', 'validation', or 'test'.")
+            raise RuntimeError(f"Unknown partition {partition}")
 
         return start_event, end_event, correction_factor
 
     def _get_theta_value(self, theta):
-        if isinstance(theta, six.string_types):
+        if isinstance(theta, str):
             benchmark = self.benchmarks[theta]
             theta_value = np.array([benchmark[key] for key in benchmark])
         elif isinstance(theta, int):
@@ -859,7 +858,7 @@ class DataAnalyzer(object):
             theta_matrix = np.zeros(self.n_benchmarks)
             theta_matrix[: unpadded_theta_matrix.shape[0]] = unpadded_theta_matrix
 
-        elif isinstance(theta, six.string_types):
+        elif isinstance(theta, str):
             i_benchmark = list(self.benchmarks).index(theta)
             theta_matrix = self._get_theta_benchmark_matrix(i_benchmark)
 
@@ -884,26 +883,25 @@ class DataAnalyzer(object):
             dtheta_matrix = np.zeros((unpadded_theta_matrix.shape[0], self.n_benchmarks))
             dtheta_matrix[:, : unpadded_theta_matrix.shape[1]] = unpadded_theta_matrix
 
-        elif isinstance(theta, six.string_types):
+        elif isinstance(theta, str):
             benchmark = self.benchmarks[theta]
-            benchmark = np.array([value for _, value in six.iteritems(benchmark)])
+            benchmark = np.array([value for _, value in benchmark.items()])
             dtheta_matrix = self._get_dtheta_benchmark_matrix(benchmark)
 
         elif isinstance(theta, int):
             benchmark = self.benchmarks[list(self.benchmarks.keys())[theta]]
-            benchmark = np.array([value for _, value in six.iteritems(benchmark)])
+            benchmark = np.array([value for _, value in benchmark.items()])
             dtheta_matrix = self._get_dtheta_benchmark_matrix(benchmark)
 
         else:
-            dtheta_matrix = self.morpher.calculate_morphing_weight_gradient(
-                theta
-            )  # Shape (n_parameters, n_benchmarks_phys)
+            # Shape (n_parameters, n_benchmarks_phys)
+            dtheta_matrix = self.morpher.calculate_morphing_weight_gradient(theta)
 
         return dtheta_matrix
 
     def _calculate_sampling_factors(self):
         events = np.asarray(self.n_events_generated_per_benchmark, dtype=np.float)
-        logger.debug("Events per benchmark: %s", events)
+        logger.debug(f"Events per benchmark: {events}")
         factors = events / np.sum(events)
         factors = np.hstack((factors, 1.0))  # background events
         return factors
@@ -923,7 +921,6 @@ class DataAnalyzer(object):
         return closest_idx
 
     def _benchmark_array(self):
-        benchmarks_array = []
-        for benchmark in six.itervalues(self.benchmarks):
-            benchmarks_array.append(list(six.itervalues(benchmark)))
-        return np.asarray(benchmarks_array)
+        return np.asarray([
+            benchmark.values() for benchmark in self.benchmarks.values()
+        ])
