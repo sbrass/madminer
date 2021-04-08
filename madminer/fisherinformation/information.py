@@ -370,11 +370,13 @@ class FisherInformation(DataAnalyzer):
                     )
                     covariance = None
 
-        # Returns
-        if model_is_ensemble:
-            return fisher_info_rate + fisher_info_kin, rate_covariance + covariance
+        # Covariance
+        if model_is_ensemble and covariance is not None:
+            covariance = rate_covariance + covariance
+        else:
+            covariance = rate_covariance
 
-        return fisher_info_rate + fisher_info_kin, rate_covariance
+        return fisher_info_rate + fisher_info_kin, covariance
 
     def rate_information(
         self,
