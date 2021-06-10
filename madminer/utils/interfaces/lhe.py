@@ -659,7 +659,10 @@ def _extract_nuisance_param_dict(weight_groups, systematics_name, systematics_de
             logger.debug("New weight group: %s", wg_name)
 
             if "mg_reweighting" in wg_name.lower() or not (
-                systematics_definition[1] in wg_name.lower() or "pdf" in wg_name.lower() or "ct" in wg_name.lower()
+                systematics_definition[1] in wg_name.lower() \
+                    or "pdf" in wg_name.lower() \
+                    or "ct" in wg_name.lower() \
+                    or "mstw" in wg_name.lower()
             ):
                 continue
 
